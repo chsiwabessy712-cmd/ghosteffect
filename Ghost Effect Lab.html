@@ -1,0 +1,227 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Ghost Effect Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: same lesson card layout as Clone Factory (scenarios, stage with meter, one code area). */
+:root{
+  --bg:#f3f0e8; --panel:#fffdf7; --ink:#1d2430; --mute:#6a7280; --line:#d9d4c6;
+  --yes:#1f8a4c; --no:#c2412d; --accent:#2b4fd8; --pulse:#f2b705;
+  --brick:#c9b8a3; --mortar:#e9e1d4; --ghost:#9966ff; --code:#f6f4ef; --code-dot:#e2ddd0;
+  --font:"Trebuchet MS","Segoe UI",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){--bg:#14171d;--panel:#1d222b;--ink:#eceff4;--mute:#97a0ae;--line:#323947;--yes:#4cc98a;--no:#ff7a66;--accent:#7e9bff;--brick:#4a3f38;--mortar:#2b2520;--ghost:#b393ff;--code:#181c24;--code-dot:#2a303c;color-scheme:dark}
+}
+:root[data-theme="dark"]{--bg:#14171d;--panel:#1d222b;--ink:#eceff4;--mute:#97a0ae;--line:#323947;--yes:#4cc98a;--no:#ff7a66;--accent:#7e9bff;--brick:#4a3f38;--mortar:#2b2520;--ghost:#b393ff;--code:#181c24;--code-dot:#2a303c;color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 var(--font)}
+main{max-width:900px;margin:0 auto;padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font-size:1.7rem;margin:.2em 0 .1em;letter-spacing:-.01em;text-wrap:balance}
+h2{font-size:1.05rem;margin:0 0 8px}
+p.lead{color:var(--mute);margin:0 0 18px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:18px;min-width:0}
+
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center}
+button.btn{border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:10px;padding:8px 14px;font:inherit;font-weight:700;cursor:pointer}
+button.btn[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+button.go{background:var(--yes);color:#fff;border-color:var(--yes)}
+button.hit{background:#ffbf00;color:#2a2000;border-color:#ffbf00}
+.opt{display:flex;align-items:center;gap:6px;font-size:.9rem;font-weight:600}
+.opt select{font:inherit;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:4px 6px}
+.predict{background:var(--bg);border-left:5px solid var(--pulse);border-radius:6px;padding:8px 12px;margin:0 0 18px;font-size:.95rem}
+.predict.ok{border-color:var(--yes)} .predict.warn{border-color:var(--no)}
+.predict b{display:block;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
+
+/* stage: a brick wall behind the sprite, so you can see through her */
+.stagewrap{position:relative;width:100%;max-width:100%;aspect-ratio:16/9;border-radius:10px;overflow:hidden;border:2px solid var(--line);
+  background:var(--brick)}
+.bricks{position:absolute;inset:0;width:100%;height:100%}
+.sprite{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;z-index:2}
+.sprite .face{font-size:clamp(72px,16vw,130px);line-height:1;display:block}
+.outline{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:clamp(110px,22vw,180px);aspect-ratio:1;border:2px dashed var(--ink);border-radius:14px;z-index:3;
+  display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;font-size:.75rem;font-weight:700;opacity:0;transition:opacity .3s;pointer-events:none}
+.outline span{background:var(--panel);border-radius:8px;padding:1px 8px}
+.outline.show{opacity:.8}
+.readout{position:absolute;right:10px;top:10px;z-index:4;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:4px 12px;font-weight:700;font-variant-numeric:tabular-nums}
+
+/* meter */
+.meter{margin-top:14px}
+.track{position:relative;height:18px;border-radius:9px;background:linear-gradient(90deg,var(--ghost),transparent);border:1px solid var(--line)}
+.knob{position:absolute;top:50%;width:22px;height:22px;border-radius:50%;background:var(--panel);border:3px solid var(--ink);transform:translate(-50%,-50%);transition:left .25s}
+.ticks{display:grid;grid-template-columns:repeat(5,1fr);font-size:.78rem;color:var(--mute);margin-top:4px;font-variant-numeric:tabular-nums}
+.ticks span{text-align:center} .ticks span:first-child{text-align:left} .ticks span:last-child{text-align:right}
+.ends{display:flex;justify-content:space-between;font-size:.78rem;color:var(--mute)}
+
+.steps{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:14px}
+.step{border:1px solid var(--line);border-radius:10px;padding:6px 8px;text-align:center;min-width:0;transition:border-color .2s,background .2s}
+.step b{display:block;font-size:1.2rem;font-variant-numeric:tabular-nums}
+.step span{font-size:.72rem;color:var(--mute);display:block}
+.step.now{border-color:var(--pulse);box-shadow:0 0 0 2px var(--pulse)}
+.step.done{background:var(--bg)}
+@media (max-width:520px){.steps{grid-template-columns:repeat(3,1fr)}}
+
+/* code area */
+.codearea{background:var(--code);background-image:radial-gradient(var(--code-dot) 1.2px,transparent 1.2px);background-size:18px 18px;border:1px solid var(--line);border-radius:10px;padding:16px;
+  display:flex;flex-wrap:wrap;gap:22px 40px;align-items:flex-start;overflow-x:auto}
+.script{flex:none}
+.blk{display:flex;align-items:center;gap:6px;font-weight:700;font-size:.9rem;padding:7px 10px;margin:0 0 2px;border-radius:6px;width:fit-content;white-space:nowrap;transition:box-shadow .2s}
+.ev{background:#ffbf00;color:#2a2000}
+.ct{background:#ffab19;color:#2a1a00}
+.lk{background:#9966ff;color:#fff}
+.hat{border-radius:18px 18px 6px 6px;padding-top:11px}
+.inner{border-left:16px solid #ffab19;padding:2px 0 2px 4px;margin:0 0 2px}
+.cend{height:16px;padding:0 8px;border-radius:0 0 6px 6px;width:120px;justify-content:flex-end;font-size:.75rem}
+.val{background:#fff;color:#222;border-radius:14px;padding:1px 10px;font-weight:600}
+.drop{background:rgba(0,0,0,.12);border-radius:14px;padding:1px 8px}
+.running{box-shadow:0 0 0 3px var(--pulse)}
+.tip{color:var(--mute);font-size:.9rem;margin:8px 0 0}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.knob{transition:none}}
+</style>
+
+<main>
+<h1>Ghost effect = see-through</h1>
+<p class="lead">The <b>ghost effect</b> makes a sprite transparent. <b>0</b> means normal, <b>100</b> means invisible. Scarlet Witch fades away when she is hit by a web: the ghost effect starts at 0 and goes up by 25 every 0.1 seconds, 4 times, until it reaches 100.</p>
+
+<div class="bar" role="group" aria-label="Scenarios">
+  <button class="btn" id="scFade">Scenario: fade out</button>
+  <button class="btn" id="scFadeIn">Scenario: fade in</button>
+  <button class="btn" id="scNoWait">Bug: no wait</button>
+  <button class="btn" id="scBy10">Bug: change by 10</button>
+  <button class="btn" id="scNoReset">Bug: no set to 0</button>
+</div>
+<div class="predict" id="predict"><b id="predictLabel">Predict first</b><span id="predictText"></span></div>
+
+<div class="card">
+  <div class="bar">
+    <button class="btn hit" id="hit">🕸️ Shoot web (broadcast hit)</button>
+    <button class="btn go" id="flag">🏁 Green flag</button>
+    <label class="opt" for="speed">Speed
+      <select id="speed"><option value="8">Slow motion (8× slower)</option><option value="1">Real speed</option></select>
+    </label>
+  </div>
+  <div class="stagewrap" aria-label="Stage">
+    <svg class="bricks" aria-hidden="true"><defs><pattern id="br" width="72" height="36" patternUnits="userSpaceOnUse"><rect width="72" height="36" style="fill:var(--brick)"/><path d="M0 1.5H72M0 19.5H72M1.5 0V18M37.5 18V36" style="fill:none;stroke:var(--mortar);stroke-width:3"/></pattern></defs><rect width="100%" height="100%" fill="url(#br)"/></svg>
+    <div class="readout" id="readout">ghost 0</div>
+    <div class="sprite" id="sprite"><span class="face">🧙‍♀️</span></div>
+    <div class="outline" id="outline"><span>still here, just invisible</span></div>
+  </div>
+  <div class="meter" aria-hidden="true">
+    <div class="ends"><span>normal</span><span>invisible</span></div>
+    <div class="track"><div class="knob" id="knob"></div></div>
+    <div class="ticks"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
+  </div>
+  <div class="steps" id="steps"></div>
+  <p class="tip">The green flag clears all graphic effects, so the ghost effect goes back to 0.</p>
+</div>
+
+<div class="card">
+  <h2>Scarlet Witch's code</h2>
+  <div class="codearea" id="code"></div>
+  <p class="tip">The code changes with each scenario. A yellow glow shows the block that is running.</p>
+</div>
+</main>
+
+<script>
+const $=id=>document.getElementById(id);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const FRAME=1000/30;
+let cfg={}, ghost=0, runId=0, hits=0, active='scFade';
+
+const BASE={reset:true,start:0,times:4,change:25,wait:true,waitSec:0.1};
+const SC={
+  scFade:{set:{},q:'The ghost effect starts at 0 and goes up by 25, four times. What is the ghost value at the end, and how long does it take?'},
+  scFadeIn:{set:{start:100,change:-25},q:'Now it starts at 100 and changes by -25, four times. What will happen to Scarlet Witch?'},
+  scNoWait:{set:{wait:false},q:'The wait block is gone. Will you still see Scarlet Witch fade away?'},
+  scBy10:{set:{change:10},q:'Now it changes by 10, four times. Will Scarlet Witch disappear?'},
+  scNoReset:{set:{reset:false},q:'There is no "set ghost effect to 0". Shoot the web once, then shoot it again. What happens the second time?'},
+};
+
+/* ---------- code area ---------- */
+function codeHTML(c){
+  let a=`<div class="blk ev hat" id="bHat">when I receive <span class="drop">hit ▾</span></div>`;
+  if(c.reset) a+=`<div class="blk lk" id="bSet">set <span class="drop">ghost ▾</span> effect to <span class="val">${c.start}</span></div>`;
+  a+=`<div class="blk ct" id="bRepeat">repeat <span class="val">${c.times}</span></div><div class="inner">`;
+  a+=`<div class="blk lk" id="bChange">change <span class="drop">ghost ▾</span> effect by <span class="val">${c.change}</span></div>`;
+  if(c.wait) a+=`<div class="blk ct" id="bWait">wait <span class="val">${c.waitSec}</span> seconds</div>`;
+  a+=`</div><div class="blk ct cend">↻</div>`;
+  return `<div class="script">${a}</div>`;
+}
+function flash(id,ms){const e=$(id); if(!e) return; e.classList.add('running'); setTimeout(()=>e.classList.remove('running'),ms||400);}
+
+/* ---------- display ---------- */
+function setGhost(v){
+  ghost=Math.max(0,Math.min(100,v));
+  $('sprite').style.opacity=1-ghost/100;
+  $('knob').style.left=ghost+'%';
+  $('readout').textContent='ghost '+ghost;
+  $('outline').classList.toggle('show',ghost>=100);
+}
+function setPredict(label,text,cls){
+  $('predictLabel').textContent=label; $('predictText').textContent=text;
+  $('predict').className='predict'+(cls?' '+cls:'');
+}
+function buildSteps(startVal){
+  const vals=[startVal]; let g=startVal;
+  for(let i=0;i<cfg.times;i++){g=Math.max(0,Math.min(100,g+cfg.change)); vals.push(g);}
+  $('steps').innerHTML=vals.map((v,i)=>`<div class="step" id="st${i}"><b>${v}</b><span>${i?'repeat '+i:'start'}</span><span id="tm${i}">&nbsp;</span></div>`).join('');
+}
+function markStep(i,t){
+  document.querySelectorAll('.step').forEach((e,k)=>{e.classList.toggle('now',k===i); e.classList.toggle('done',k<i);});
+  $('tm'+i).textContent=(Math.round(t*100)/100)+' s';
+}
+
+/* ---------- Scratch behaviour ---------- */
+async function hit(){
+  const id=++runId; hits++;
+  const slow=+$('speed').value;
+  const before=ghost;
+  flash('bHat');
+  if(cfg.reset){setGhost(cfg.start); flash('bSet');}
+  buildSteps(ghost);
+  let t=0; markStep(0,t);
+  await sleep(350*Math.min(slow,2)); if(id!==runId) return;
+  for(let i=1;i<=cfg.times;i++){
+    flash('bRepeat'); flash('bChange');
+    setGhost(ghost+cfg.change);
+    if(cfg.wait){flash('bWait'); t+=cfg.waitSec; markStep(i,t); await sleep(cfg.waitSec*1000*slow);}
+    else{t+=1/30; markStep(i,t); await sleep(FRAME*slow);}
+    if(id!==runId) return;
+  }
+  document.querySelectorAll('.step').forEach(e=>e.classList.replace('now','done'));
+  explain(before,t);
+}
+function explain(before,t){
+  const secs=(Math.round(t*100)/100)+' seconds';
+  switch(active){
+    case 'scFade': return setPredict('Answer',`0 → 25 → 50 → 75 → 100. Because 4 × 25 = 100, Scarlet Witch is fully invisible after 4 × 0.1 = 0.4 seconds.`,'ok');
+    case 'scFadeIn': return setPredict('Answer',`100 → 75 → 50 → 25 → 0. A negative number makes the sprite less see-through, so Scarlet Witch fades in.`,'ok');
+    case 'scNoWait': return setPredict('Answer',`Without a wait, each repeat only takes one frame (1/30 of a second), so the whole fade takes about ${secs}. At Real speed it looks like she disappears at once. Fix: add wait 0.1 seconds inside the repeat.`,'warn');
+    case 'scBy10': return setPredict('Answer',`0 → 10 → 20 → 30 → 40. Because 4 × 10 = 40, she is only 40% see-through and never disappears. To reach 100 in 4 steps, change by 25 (100 ÷ 4 = 25).`,'warn');
+    case 'scNoReset':
+      if(before<100) return setPredict('Answer so far','The first hit works: 0 → 100. Now shoot the web again and watch the numbers.','ok');
+      return setPredict('Answer',`The ghost effect was already 100, and Scratch can't go higher than 100, so nothing changes and the second hit shows no animation. Fix: add "set ghost effect to 0" at the start, so every hit starts from normal.`,'warn');
+  }
+}
+function greenFlag(){
+  runId++;
+  setGhost(0);
+  buildSteps(0);
+  setPredict('Predict first',SC[active].q);
+}
+function scenario(key){
+  active=key;
+  cfg={...BASE,...SC[key].set};
+  document.querySelectorAll('[id^="sc"]').forEach(b=>b.setAttribute('aria-pressed',b.id===key));
+  $('code').innerHTML=codeHTML(cfg);
+  $('speed').value='8';
+  greenFlag();
+}
+Object.keys(SC).forEach(k=>$(k).onclick=()=>scenario(k));
+$('hit').onclick=hit;
+$('flag').onclick=greenFlag;
+scenario('scFade');
+</script>
+
+</body></html>
